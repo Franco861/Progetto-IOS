@@ -1,4 +1,5 @@
 import SwiftUI
+import _SwiftData_SwiftUI
 import MapKit
 
 // 1. MODELLO DATI ROBUSTO (REST Countries API)
@@ -501,84 +502,172 @@ struct CountryDetailSheet: View {
     }
 }
 
-// 5. SCHERMATA 3: PROFILO
 struct ProfileView: View {
     @Environment(CountryViewModel.self) private var viewModel
+    @Environment(\.modelContext) private var modelContext
+    @Query private var userProfiles: [UserProfile]
+    
+    // Campi per il form di Login
+    @State private var inputName: String = ""
+    @State private var inputEmail: String = ""
+    
+    // Recupera il primo profilo salvato nel DB
+    private var currentUser: UserProfile? {
+        userProfiles.first
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    HStack(spacing: 16) {
-                        Image(systemName: "person.crop.circle.fill")
-                            .resizable()
-                            .frame(width: 60, height: 60)
-                            .foregroundStyle(.blue)
+            if let user = currentUser {
+                // MARK: - VISTA UTENTE LOGGATO
+                List {
+                    Section {
+                        HStack(spacing: 16) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .resizable()
+                                .frame(width: 60, height: 60)
+                                .foregroundStyle(.blue)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Mario Rossi")
-                                .font(.title3)
-                                .bold()
-                            Text("mario.rossi@example.com")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(user.name)
+                                    .font(.title3)
+                                    .bold()
+                                Text(user.email)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+
+                    Section("Posti Salvati (\(viewModel.savedCountries.count))") {
+                        if viewModel.savedCountries.isEmpty {
+                            Text("Nessun posto salvato al momento.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                Section("Posti Salvati (\(viewModel.savedCountries.count))") {
-                    if viewModel.savedCountries.isEmpty {
-                        Text("Nessun posto salvato al momento.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(viewModel.savedCountries) { country in
-                            HStack(spacing: 12) {
-                                AsyncImage(url: URL(string: country.flags.png)) { phase in
-                                    if let image = phase.image {
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                    } else {
-                                        Color.gray.opacity(0.3)
+                        } else {
+                            ForEach(viewModel.savedCountries) { country in
+                                HStack(spacing: 12) {
+                                    AsyncImage(url: URL(string: country.flags.png)) { phase in
+                                        if let image = phase.image {
+                                            image
+                                                .resizable()
+                                                .scaledToFill()
+                                        } else {
+                                            Color.gray.opacity(0.3)
+                                        }
                                     }
-                                }
-                                .frame(width: 35, height: 22)
-                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                                    .frame(width: 35, height: 22)
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
 
-                                VStack(alignment: .leading) {
-                                    Text(country.name.common)
-                                        .font(.headline)
-                                    Text("Capitale: \(country.capital?.first ?? "N/D")")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
+                                    VStack(alignment: .leading) {
+                                        Text(country.name.common)
+                                            .font(.headline)
+                                        Text("Capitale: \(country.capital?.first ?? "N/D")")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
 
-                                Spacer()
+                                    Spacer()
 
-                                Button {
-                                    viewModel.toggleSave(country)
-                                } label: {
-                                    Image(systemName: "bookmark.fill")
-                                        .foregroundStyle(.blue)
+                                    Button {
+                                        viewModel.toggleSave(country)
+                                    } label: {
+                                        Image(systemName: "bookmark.fill")
+                                            .foregroundStyle(.blue)
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                Section("Impostazioni") {
-                    Label("Notifiche", systemImage: "bell")
-                    Label("Privacy e Sicurezza", systemImage: "lock")
-                    Label("Modalità Scura", systemImage: "moon")
+                    Section("Account") {
+                        Button(role: .destructive, action: logout) {
+                            Label("Esci (Logout)", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                    }
                 }
+                .navigationTitle("Profilo")
+            } else {
+                // MARK: - VISTA LOGIN
+                VStack(spacing: 24) {
+                    Spacer()
+                    
+                    Image(systemName: "person.badge.key.fill")
+                        .font(.system(size: 70))
+                        .foregroundStyle(.blue)
+                    
+                    VStack(spacing: 8) {
+                        Text("Accedi al Profilo")
+                            .font(.title)
+                            .bold()
+                        Text("Inserisci le tue credenziali per salvare la tua sessione.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    VStack(spacing: 16) {
+                        TextField("Nome Completo", text: $inputName)
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        
+                        TextField("Indirizzo Email", text: $inputEmail)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .padding(.horizontal)
+                    
+                    Button(action: login) {
+                        Text("Accedi")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isFormValid ? Color.blue : Color.gray)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .disabled(!isFormValid)
+                    .padding(.horizontal)
+                    
+                    Spacer()
+                }
+                .padding()
+                .navigationTitle("Accedi")
             }
-            .navigationTitle("Profilo")
+        }
+    }
+    
+    // Controlla che i campi non siano vuoti
+    private var isFormValid: Bool {
+        !inputName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !inputEmail.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    // Salva l'utente nel Database SwiftData
+    private func login() {
+        let newUser = UserProfile(
+            name: inputName.trimmingCharacters(in: .whitespaces),
+            email: inputEmail.trimmingCharacters(in: .whitespaces)
+        )
+        modelContext.insert(newUser)
+        
+        // Pulisci i campi
+        inputName = ""
+        inputEmail = ""
+    }
+    
+    // Rimuove l'utente dal Database
+    private func logout() {
+        if let user = currentUser {
+            modelContext.delete(user)
         }
     }
 }
-
 // 6. CONTENT VIEW CON BARRA A 3 SCHEDE
 struct ContentView: View {
     @State private var viewModel = CountryViewModel()

@@ -1,10 +1,3 @@
-//
-//  AppGeopApp.swift
-//  AppGeop
-//
-//  Created by s18 on 15/10/26.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -13,6 +6,7 @@ struct AppGeopApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
+            UserProfile.self // <- Aggiunto qui
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

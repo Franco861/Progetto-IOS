@@ -101,18 +101,45 @@ class CountryViewModel {
         isLoading = true
         defer { isLoading = false }
 
-        guard let url = URL(string: "https://restcountries.com/v3.1/all?fields=cca3,name,capital,region,population,flags, area, latlng") else { return }
+        var all: [Country] = []
+        var offset = 0
+        let limit = 100   // massimo consentito dal piano gratuito
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            
-            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                let decoded = try JSONDecoder().decode([Country].self, from: data)
-                self.countries = decoded.sorted { $0.name.common < $1.name.common }
+            while offset < 1000 {   // limite di sicurezza
+                let page = try await fetchPage(limit: limit, offset: offset)
+                all += page.data.objects.map { $0.toCountry() }
+                if !page.data.meta.more || page.data.objects.isEmpty { break }
+                offset += limit
             }
+            self.countries = all.sorted { $0.name.common < $1.name.common }
         } catch {
             print("Errore nel caricamento dei dati dall'API:", error)
         }
+    }
+
+    private func fetchPage(limit: Int, offset: Int) async throws -> CountriesResponse {
+        var components = URLComponents(string: "https://api.restcountries.com/countries/v5")!
+        components.queryItems = [
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset)),
+            URLQueryItem(name: "response_fields",
+                         value: "names.common,names.official,codes.alpha_2,codes.alpha_3,capitals,region,population,area.kilometers,coordinates,flag.url_png")
+        ]
+        guard let url = components.url else { throw URLError(.badURL) }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(APIConfig.restCountriesKey)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+
+        guard http.statusCode == 200 else {
+            // Stampa il motivo dell'errore (401 = chiave mancante o sbagliata, 403 = account bloccato, ...)
+            print("HTTP \(http.statusCode):", String(data: data, encoding: .utf8) ?? "")
+            throw URLError(.badServerResponse)
+        }
+        return try JSONDecoder().decode(CountriesResponse.self, from: data)
     }
     
     func toggleSave(_ country: Country) {

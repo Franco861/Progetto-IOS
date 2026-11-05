@@ -84,43 +84,43 @@ final class ClassificheViewModel {
     }
 
     func ranking(from countries: [Country]) -> [RankedCountry] {
-        // 1. Filtro per continente
         let pool = selectedRegion == "Tutti"
             ? countries
             : countries.filter { $0.region == selectedRegion }
 
-        // 2. Scarta i paesi senza dato o con valore 0
         let valid: [(country: Country, value: Double)] = pool.compactMap { country in
             guard let v = value(of: country), v > 0 else { return nil }
             return (country, v)
         }
 
-        // 3. Ordinamento e posizioni (calcolate prima di ricerca e limite)
         let sorted = valid.sorted { ascending ? $0.value < $1.value : $0.value > $1.value }
-        let maxValue = sorted.map { $0.value }.max() ?? 1
 
+        // Posizione reale in classifica (calcolata prima di ricerca e limite)
         let ranked = sorted.enumerated().map { index, item in
-            RankedCountry(
-                rank: index + 1,
-                country: item.country,
-                value: item.value,
-                fraction: item.value / maxValue
-            )
+            (rank: index + 1, country: item.country, value: item.value)
         }
 
-        // 4. Ricerca: mantiene la posizione reale e ignora il limite
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !query.isEmpty {
-            return ranked.filter { item in
-                let matchName = item.country.name.common.localizedCaseInsensitiveContains(query)
-                let matchCapital = item.country.capital?.contains { capital in
-                    capital.localizedCaseInsensitiveContains(query)
-                } ?? false
-                return matchName || matchCapital
+        let shown: [(rank: Int, country: Country, value: Double)]
+        let reference: Double
+
+        if query.isEmpty {
+            shown = limit == 0 ? ranked : Array(ranked.prefix(limit))
+            reference = shown.map { $0.value }.max() ?? 1   // barra relativa ai paesi mostrati
+        } else {
+            shown = ranked.filter { item in
+                item.country.name.common.localizedCaseInsensitiveContains(query) ||
+                (item.country.capital?.contains { $0.localizedCaseInsensitiveContains(query) } ?? false)
             }
+            reference = ranked.map { $0.value }.max() ?? 1  // con la ricerca, relativa all'intera classifica
         }
 
-        // 5. Limite "Primi N"
-        return limit == 0 ? ranked : Array(ranked.prefix(limit))
+        return shown.map { item in
+            let fraction = criterion == .density
+                ? log10(1 + item.value) / log10(1 + reference)
+                : item.value / reference
+            return RankedCountry(rank: item.rank, country: item.country,
+                                 value: item.value, fraction: fraction)
+        }
     }
 }

@@ -1,14 +1,8 @@
-//
-//  ContentView.swift
-//  AppGeop
-//
-//  Created by s18 on 15/10/26.
-//
+
 
 import SwiftUI
 import MapKit
 
-// MARK: - 1. MODELLO DATI (REST Countries)
 struct Country: Codable, Identifiable, Hashable {
     var id: String { cca3 }
     let cca3: String
@@ -70,6 +64,120 @@ class CountryViewModel: ObservableObject {
             print("Errore nel caricamento dei dati:", error)
         }
     }
+}
+
+//LOGIN
+struct AnimatedMapBackground: View {
+    private let latIniziale = 48.8566
+    private let lonIniziale = 2.3522
+    
+    private let latFinale = 19.43260
+    private let lonFinale = -99.1332
+
+    var body: some View {
+      
+        TimelineView(.animation) { context in
+            let date = context.date.timeIntervalSince1970
+            
+            let progress = (sin(date / 30.0 * .pi) + 1.0) / 2.0
+            
+            let currentLat = latIniziale + (latFinale - latIniziale) * progress
+            let currentLon = lonIniziale + (lonFinale - lonIniziale) * progress
+            let currentHeading = progress * 20.0
+
+            Map(position: .constant(.camera(MapCamera(
+                centerCoordinate: CLLocationCoordinate2D(latitude: currentLat, longitude: currentLon),
+                distance: 13_000_000,
+                heading: currentHeading,
+                pitch: 0
+            ))))
+            .overlay(Color.black.opacity(0.6))
+            .disabled(true)
+            .ignoresSafeArea()
+        }
+    }
+}
+
+struct loginView: View {
+    
+    @State var username: String = ""
+    @State var password: String = ""
+    @AppStorage("isLoggedIn") private var isLogged: Bool = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    
+    
+    func checkCred (password: String, username: String) {
+        if (password.lowercased() == "admin" &&
+            username.lowercased() == "admin") {
+            isLogged = true;
+        }
+        
+        
+        else{
+            alertMessage = "Credenziali errate"
+            showAlert = true
+        }
+    }
+    
+    
+    var body: some View {
+        ZStack{
+            AnimatedMapBackground()
+            VStack{
+                    HStack{
+                    TextField("", text: $username, prompt: Text("Inserisci username")
+                        .foregroundColor(.white.opacity(0.7))
+                    )
+                    
+                    Image(systemName: "person.fill")
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+                .padding(10)
+                .background(Color.gray.opacity(0.15))
+
+                
+                HStack{
+                    SecureField("", text: $password, prompt: Text("Inserisci password")
+                        .foregroundColor(.white.opacity(0.7))
+                    )
+                    
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(.white.opacity(0.7))
+                        
+                }
+                
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+                .padding(10)
+                .background(Color.gray.opacity(0.15))
+
+                
+                Button(action: {
+                    checkCred(password: password, username: username)
+                }
+                ){
+                    Text("Login")
+                        .bold()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(10)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                    
+                }
+            }
+            .foregroundColor(Color.white)
+            .padding(90)
+        }
+        .alert("Attenzione", isPresented: $showAlert) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text(alertMessage)
+                }
+        }
+        
 }
 
 // MARK: - 3. SCHERMATA 1: LISTA E RICERCA
@@ -190,28 +298,38 @@ struct CountryMapView: View {
 }
 
 struct ContentView: View {
+    @AppStorage("isLoggedIn") private var isLogged: Bool = false
     @StateObject private var viewModel = CountryViewModel()
-
+    
+    
     var body: some View {
-        TabView {
-            CountryListView()
-                .tabItem {
-                    Label("Nazioni", systemImage: "globe.europe.africa.fill")
-                }
+        if isLogged {
+            TabView {
+                CountryListView()
+                    .tabItem {
+                        Label("Nazioni", systemImage: "globe.europe.africa.fill")
+                    }
 
-            CountryMapView()
-                .tabItem {
-                    Label("Mappa", systemImage: "map.fill")
-                }
+                CountryMapView()
+                    .tabItem {
+                        Label("Mappa", systemImage: "map.fill")
+                    }
+            }
+            .environmentObject(viewModel)
+            .task {
+                await viewModel.fetchCountries()
+            }
         }
-        .environmentObject(viewModel)
-        .task {
-            await viewModel.fetchCountries()
+        
+        else {
+            loginView()
         }
     }
 }
 
 
 #Preview {
-    ContentView()
+    ContentView().onAppear {
+        UserDefaults.standard.set(false, forKey: "isLoggedIn")
+    }
 }

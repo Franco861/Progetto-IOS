@@ -571,12 +571,17 @@ struct ContentView: View {
                     Label("Info", systemImage: "info.circle.fill")
                 }
                 .tag(1)
+            ClassificheView()
+                .tabItem{
+                    Label("Classifiche", systemImage: "trophy.fill")
+                }
+                .tag(2)
 
             ProfileView()
                 .tabItem {
                     Label("Profilo", systemImage: "person.fill")
                 }
-                .tag(2)
+                .tag(3)
         }
         .environment(viewModel)
         .task {

@@ -7,12 +7,120 @@
 
 import SwiftUI
 
-struct ClassificheViewModel: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+enum RankingCriterion: String, CaseIterable, Identifiable {
+    case population = "Popolazione"
+    case area = "Superficie"
+    case density = "Densità"
+
+    var id: String { rawValue }
+
+    var unit: String {
+        switch self {
+        case .population: return "ab."
+        case .area: return "km²"
+        case .density: return "ab./km²"
+        }
+    }
+
+    func format(_ value: Double) -> String {
+        switch self {
+        case .density:
+            return value.formatted(.number.precision(.fractionLength(0...1)))
+        default:
+            return Int(value).formatted()
+        }
     }
 }
 
-#Preview {
-    ClassificheViewModel()
+struct RankedCountry: Identifiable {
+    let rank: Int
+    let country: Country
+    let value: Double
+    let fraction: Double   // 0...1, rispetto al valore massimo della classifica
+
+    var id: String { country.id }
+}
+
+@Observable
+@MainActor
+final class ClassificheViewModel {
+    var criterion: RankingCriterion = .population
+    var limit: Int = 10          // 0 = tutti i paesi
+    var ascending: Bool = false
+    var selectedRegion: String = "Tutti"
+    var searchText: String = ""
+
+    let limits = [10, 25, 50, 0]
+
+    // L'API restituisce i continenti in inglese
+    private let regionNames: [String: String] = [
+        "Africa": "Africa",
+        "Americas": "Americhe",
+        "Asia": "Asia",
+        "Europe": "Europa",
+        "Oceania": "Oceania",
+        "Antarctic": "Antartide"
+    ]
+
+    func regionLabel(_ region: String) -> String {
+        regionNames[region] ?? region
+    }
+
+    func regions(from countries: [Country]) -> [String] {
+        let found = Set(countries.map { $0.region }).filter { !$0.isEmpty }
+        return ["Tutti"] + found.sorted()
+    }
+
+    private func value(of country: Country) -> Double? {
+        switch criterion {
+        case .population:
+            return Double(country.population)
+        case .area:
+            return country.area
+        case .density:
+            guard let area = country.area, area > 0 else { return nil }
+            return Double(country.population) / area
+        }
+    }
+
+    func ranking(from countries: [Country]) -> [RankedCountry] {
+        // 1. Filtro per continente
+        let pool = selectedRegion == "Tutti"
+            ? countries
+            : countries.filter { $0.region == selectedRegion }
+
+        // 2. Scarta i paesi senza dato o con valore 0
+        let valid: [(country: Country, value: Double)] = pool.compactMap { country in
+            guard let v = value(of: country), v > 0 else { return nil }
+            return (country, v)
+        }
+
+        // 3. Ordinamento e posizioni (calcolate prima di ricerca e limite)
+        let sorted = valid.sorted { ascending ? $0.value < $1.value : $0.value > $1.value }
+        let maxValue = sorted.map { $0.value }.max() ?? 1
+
+        let ranked = sorted.enumerated().map { index, item in
+            RankedCountry(
+                rank: index + 1,
+                country: item.country,
+                value: item.value,
+                fraction: item.value / maxValue
+            )
+        }
+
+        // 4. Ricerca: mantiene la posizione reale e ignora il limite
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            return ranked.filter { item in
+                let matchName = item.country.name.common.localizedCaseInsensitiveContains(query)
+                let matchCapital = item.country.capital?.contains { capital in
+                    capital.localizedCaseInsensitiveContains(query)
+                } ?? false
+                return matchName || matchCapital
+            }
+        }
+
+        // 5. Limite "Primi N"
+        return limit == 0 ? ranked : Array(ranked.prefix(limit))
+    }
 }

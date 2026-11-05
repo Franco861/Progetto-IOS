@@ -11,6 +11,7 @@ struct Country: Codable, Identifiable, Hashable {
     let population: Int
     let flags: CountryFlags
     let latlng: [Double]?
+    let area: Double?
 
     struct CountryName: Codable, Hashable {
         let common: String
@@ -100,7 +101,7 @@ class CountryViewModel {
         isLoading = true
         defer { isLoading = false }
 
-        guard let url = URL(string: "https://restcountries.com/v3.1/all?fields=cca3,name,capital,region,population,flags,latlng") else { return }
+        guard let url = URL(string: "https://restcountries.com/v3.1/all?fields=cca3,name,capital,region,population,flags, area, latlng") else { return }
 
         do {
             let (data, response) = try await URLSession.shared.data(from: url)

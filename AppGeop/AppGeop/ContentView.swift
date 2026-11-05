@@ -72,7 +72,7 @@ struct AnimatedMapBackground: View {
     private let lonIniziale = 2.3522
     
     private let latFinale = 19.43260
-    private let lonFinale = -99.1332
+    private let lonFinale = 99.1332
 
     var body: some View {
       
@@ -98,7 +98,7 @@ struct AnimatedMapBackground: View {
     }
 }
 
-struct loginView: View {
+struct LoginView: View {
     
     @State var username: String = ""
     @State var password: String = ""
@@ -136,7 +136,8 @@ struct loginView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
                 .padding(10)
-                .background(Color.gray.opacity(0.15))
+                .background(Color.gray.opacity(0.35))
+                .cornerRadius(10)
 
                 
                 HStack{
@@ -151,8 +152,10 @@ struct loginView: View {
                 
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
+                
                 .padding(10)
-                .background(Color.gray.opacity(0.15))
+                .background(Color.gray.opacity(0.35))
+                .cornerRadius(10)
 
                 
                 Button(action: {
@@ -179,6 +182,117 @@ struct loginView: View {
         }
         
 }
+
+
+
+
+
+struct SignupView: View {
+    @State var nome: String = ""
+    @State var cognome: String = ""
+    @State var password: String = ""
+    @State var email: String = ""
+    @State var eta: Int = 0
+    @State var campi: Bool = false
+    @State private var navigazione: Bool = false
+    
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    
+    enum Field {
+            case nome, cognome, email, password
+        }
+    @FocusState private var focusedField: Field?
+    
+    func checkCampi(nome: String, cognome: String, password: String, email: String, eta: Int){
+        if(
+            nome.count > 4 &&
+            cognome.count > 4 &&
+            password.count > 4 &&
+            email.count > 4 &&
+            eta>0
+        ){
+            campi = true;
+        }
+        
+        else{
+            campi = false
+        }
+        
+    }
+    
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AnimatedMapBackground()
+                
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        TextField("", text: $nome, prompt: Text("Nome")
+                            .foregroundColor(.white.opacity(0.7)))
+                        .focused($focusedField, equals: .nome)
+                        .padding(10)
+                        .background(focusedField == .nome ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
+                        .cornerRadius(10)
+                            
+
+                        
+                        TextField("", text: $cognome, prompt: Text("Cognome").foregroundColor(.white))
+                            .focused($focusedField, equals: .cognome)
+                            .padding(10)
+                            .background(focusedField == .cognome ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
+                            .cornerRadius(10)
+
+                    }
+                    
+                    TextField("", text: $email, prompt: Text("Email").foregroundColor(.white))
+                        .focused($focusedField, equals: .email)
+                        .padding(10)
+                        .background(focusedField == .email ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
+                        .cornerRadius(10)
+                    
+                    SecureField("", text: $password, prompt: Text("Password").foregroundColor(.white))
+                        .focused($focusedField, equals: .password)
+                        .padding(10)
+                        .background(focusedField == .password ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
+                        .cornerRadius(10)
+                    
+                    Button(action: {
+                        checkCampi(nome: nome, cognome: cognome, password: password, email: email, eta: eta)
+                        
+                        if campi {
+                            navigazione = true
+                        }
+                        
+                        else {
+                            
+                        }
+                    }) {
+                        Text("Signup")
+                            .bold()
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(10)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
+                }
+                .foregroundStyle(Color.white)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(isPresented: $navigazione) {
+                CountryListView()
+            }
+        }
+    }
+}
+        
+    
+
+
 
 // MARK: - 3. SCHERMATA 1: LISTA E RICERCA
 struct CountryListView: View {
@@ -322,14 +436,15 @@ struct ContentView: View {
         }
         
         else {
-            loginView()
+            LoginView()
         }
     }
 }
 
 
 #Preview {
-    ContentView().onAppear {
-        UserDefaults.standard.set(false, forKey: "isLoggedIn")
-    }
+    SignupView()
+    //ContentView().onAppear {
+      //  UserDefaults.standard.set(false, forKey: "isLoggedIn")
+    //}
 }

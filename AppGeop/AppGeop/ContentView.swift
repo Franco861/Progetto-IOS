@@ -22,10 +22,9 @@ struct ContentView: View {
                     .tabItem { Label("Classifiche", systemImage: "trophy.fill") }
                     .tag(AppTab.classifiche)
 
-
-                GeoQuizView()
-                    .tabItem { Label("Quiz", systemImage: "questionmark.circle.fill") }
-                    .tag(AppTab.quiz)
+                VisitedView()
+                    .tabItem { Label("Visitati", systemImage: "airplane.departure") }
+                    .tag(AppTab.visited)
 
                 ProfileView()
                     .tabItem { Label("Profilo", systemImage: "person.fill") }

@@ -8,5 +8,5 @@
 import Foundation
 
 enum AppTab: Hashable {
-    case map, info, classifiche, quiz, profile
+    case map, info, classifiche, visited, profile
 }

@@ -43,7 +43,7 @@ struct CountryInfoView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 4))
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(country.localizedName)
+                            Text(country.name.common)
                                 .font(.headline)
                             Text("Capitale: \(country.capital?.first ?? "N/D")")
                                 .font(.subheadline)
@@ -52,13 +52,24 @@ struct CountryInfoView: View {
 
                         Spacer()
 
-                        Button {
-                            viewModel.toggleSave(country)
-                        } label: {
-                            Image(systemName: viewModel.isSaved(country) ? "bookmark.fill" : "bookmark")
-                                .foregroundStyle(.blue)
+                        // Icona Salvati + Icona Visitati nella riga
+                        HStack(spacing: 14) {
+                            Button {
+                                viewModel.toggleSave(country)
+                            } label: {
+                                Image(systemName: viewModel.isSaved(country) ? "bookmark.fill" : "bookmark")
+                                    .foregroundStyle(.blue)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                viewModel.toggleVisited(country)
+                            } label: {
+                                Image(systemName: viewModel.isVisited(country) ? "checkmark.seal.fill" : "checkmark.seal")
+                                    .foregroundStyle(viewModel.isVisited(country) ? .green : .gray)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                     .padding(.vertical, 4)
                 }
@@ -72,13 +83,14 @@ struct CountryDetailFullView: View {
     let country: Country
     @Environment(CountryViewModel.self) private var viewModel
 
-    
+    // Paesi confinanti, ricavati dai codici a 3 lettere
     private var neighbors: [Country] {
         country.borders.compactMap { code in
             viewModel.countries.first { $0.cca3 == code }
         }
     }
 
+    // Righe della tabella: quelle senza dato non vengono mostrate
     private var rows: [(icon: String, title: String, value: String)] {
         var r: [(icon: String, title: String, value: String)] = [
             ("building.2", "Capitale", country.capital?.joined(separator: ", ") ?? "N/D"),
@@ -116,7 +128,7 @@ struct CountryDetailFullView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .shadow(radius: 5)
 
-                Text(country.localizedName)
+                Text(country.name.official)
                     .font(.title2)
                     .bold()
                     .multilineTextAlignment(.center)
@@ -135,6 +147,7 @@ struct CountryDetailFullView: View {
 
                 bordersSection
 
+                // Pulsante 1: Salvati
                 Button {
                     viewModel.toggleSave(country)
                 } label: {
@@ -148,10 +161,25 @@ struct CountryDetailFullView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .padding(.top, 10)
+
+                // Pulsante 2: Visitati (sotto al pulsante Salvati)
+                Button {
+                    viewModel.toggleVisited(country)
+                } label: {
+                    Label(
+                        viewModel.isVisited(country) ? "Rimuovi dai Visitati" : "Aggiungi ai Visitati",
+                        systemImage: viewModel.isVisited(country) ? "checkmark.seal.fill" : "checkmark.seal"
+                    )
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(viewModel.isVisited(country) ? .red : .green)
             }
             .padding()
         }
-        .navigationTitle(country.localizedName)
+        .navigationTitle(country.name.common)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -169,7 +197,7 @@ struct CountryDetailFullView: View {
                     HStack {
                         ForEach(neighbors) { neighbor in
                             NavigationLink(value: neighbor) {
-                                Text(neighbor.localizedName)
+                                Text(neighbor.name.common)
                                     .font(.subheadline)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)

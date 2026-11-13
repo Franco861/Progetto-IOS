@@ -33,8 +33,13 @@ class CountryViewModel {
     var savedCountryIDs: Set<String> = []
     private let savedKey = "savedCountryIDs"
 
+    // MARK: - Visitati
+    var visitedCountryIDs: Set<String> = []
+    private let visitedKey = "visitedCountryIDs"
+
     init() {
         savedCountryIDs = Set(UserDefaults.standard.stringArray(forKey: savedKey) ?? [])
+        visitedCountryIDs = Set(UserDefaults.standard.stringArray(forKey: visitedKey) ?? [])
     }
 
     // MARK: - Costanti
@@ -81,12 +86,23 @@ class CountryViewModel {
         if query.isEmpty {
             return countries
         } else {
-            return countries.filter { $0.matches(query: query) }
+            return countries.filter { country in
+                let matchName = country.name.common.localizedCaseInsensitiveContains(query)
+                let matchCapital = country.capital?.contains { $0.localizedCaseInsensitiveContains(query) } ?? false
+                return matchName || matchCapital
+            }
         }
     }
 
     var savedCountries: [Country] {
         countries.filter { savedCountryIDs.contains($0.cca3) }
+    }
+
+    // Paesi visitati, in ordine alfabetico
+    var visitedCountries: [Country] {
+        countries
+            .filter { visitedCountryIDs.contains($0.cca3) }
+            .sorted { $0.name.common < $1.name.common }
     }
 
     // MARK: - Caricamento dati
@@ -118,6 +134,21 @@ class CountryViewModel {
         UserDefaults.standard.set(Array(savedCountryIDs), forKey: savedKey)
     }
 
+    // MARK: - Paesi Visitati (stessa logica dei Preferiti)
+    func isVisited(_ country: Country) -> Bool {
+        visitedCountryIDs.contains(country.cca3)
+    }
+
+    func toggleVisited(_ country: Country) {
+        if visitedCountryIDs.contains(country.cca3) {
+            visitedCountryIDs.remove(country.cca3)
+        } else {
+            visitedCountryIDs.insert(country.cca3)
+        }
+        UserDefaults.standard.set(Array(visitedCountryIDs), forKey: visitedKey)
+    }
+
+    // MARK: - Navigazione tra schede
     func openInfoForCountry(_ country: Country) {
         infoPath = [country]
         withAnimation(.easeInOut(duration: 0.3)) {

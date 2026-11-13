@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		08E6B8C630A711DC0071D968 /* AuthViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E6B8C530A711DC0071D968 /* AuthViews.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		05F54A0F3081176D001EBB60 /* AppGeop.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AppGeop.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		08E6B8C530A711DC0071D968 /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +37,7 @@
 		05F54A063081176D001EBB60 = {
 			isa = PBXGroup;
 			children = (
+				08E6B8C530A711DC0071D968 /* AuthViews.swift */,
 				05F54A113081176D001EBB60 /* AppGeop */,
 				05F54A103081176D001EBB60 /* Products */,
 			);
@@ -119,6 +125,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				08E6B8C630A711DC0071D968 /* AuthViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

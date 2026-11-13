@@ -17,7 +17,7 @@ enum CountryService {
         let limit = 100
         while offset < 1000 {
             let page = try await fetchPage(limit: limit, offset: offset)
-            all += page.data.objects.map { $0.toCountry() }
+            all += page.data.objects.compactMap { $0.toCountry() }
             if !page.data.meta.more || page.data.objects.isEmpty { break }
             offset += limit
         }

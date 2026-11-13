@@ -1,19 +1,18 @@
 import SwiftUI
-import SwiftData
 
 struct ProfileView: View {
     @Environment(CountryViewModel.self) private var viewModel
-    @Query private var userProfiles: [UserProfile]
 
     @AppStorage("isLoggedIn") private var isLogged: Bool = false
     @AppStorage("loggedUsername") private var loggedUsername: String = ""
 
     private var currentUser: UserProfile? {
+        let users = UserStorage.loadUsers()
         if !loggedUsername.isEmpty,
-           let matched = userProfiles.first(where: { $0.username == loggedUsername }) {
+           let matched = users.first(where: { $0.username.caseInsensitiveCompare(loggedUsername) == .orderedSame }) {
             return matched
         }
-        return userProfiles.first
+        return users.first
     }
 
     var body: some View {
@@ -103,7 +102,7 @@ struct ProfileView: View {
         .navigationTitle("Profilo")
     }
 
-    // MARK: - Logica Logout (mantiene l'account salvato nel DB)
+    // MARK: - Logica Logout
     private func logout() {
         loggedUsername = ""
         isLogged = false
@@ -113,5 +112,4 @@ struct ProfileView: View {
 #Preview {
     ProfileView()
         .environment(CountryViewModel())
-        .modelContainer(for: UserProfile.self, inMemory: true)
 }

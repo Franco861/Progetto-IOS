@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 import MapKit
 
 // MARK: - 1. SFONDO MAPPA ANIMATA
@@ -37,7 +36,6 @@ struct LoginView: View {
     @State private var username: String = ""
     @State private var password: String = ""
     
-    @Query private var userProfiles: [UserProfile]
     @AppStorage("isLoggedIn") private var isLogged: Bool = false
     @AppStorage("loggedUsername") private var loggedUsername: String = ""
     
@@ -59,7 +57,8 @@ struct LoginView: View {
             return
         }
         
-        if let matchedUser = userProfiles.first(where: {
+        let users = UserStorage.loadUsers()
+        if let matchedUser = users.first(where: {
             $0.username.caseInsensitiveCompare(cleanUser) == .orderedSame &&
             $0.password == cleanPass
         }) {
@@ -77,7 +76,6 @@ struct LoginView: View {
                 AnimatedMapBackground()
                 
                 VStack(spacing: 12) {
-                    // CAMPO USERNAME
                     HStack {
                         TextField("", text: $username, prompt: Text("Inserisci username")
                             .foregroundColor(.white.opacity(0.7))
@@ -93,7 +91,6 @@ struct LoginView: View {
                     .background(focusedField == .username ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
                     .cornerRadius(10)
                     
-                    // CAMPO PASSWORD
                     HStack {
                         SecureField("", text: $password, prompt: Text("Inserisci password")
                             .foregroundColor(.white.opacity(0.7))
@@ -107,7 +104,6 @@ struct LoginView: View {
                     .background(focusedField == .password ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
                     .cornerRadius(10)
                     
-                    // BOTTONE LOGIN
                     Button(action: checkCred) {
                         Text("Login")
                             .bold()
@@ -118,7 +114,6 @@ struct LoginView: View {
                     }
                     .padding(.top, 4)
                     
-                    // LINK VERSO SIGNUP
                     NavigationLink {
                         SignupView()
                     } label: {
@@ -151,8 +146,6 @@ struct LoginView: View {
 // MARK: - 3. SCHERMATA DI REGISTRAZIONE
 struct SignupView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    @Query private var userProfiles: [UserProfile]
     
     @AppStorage("isLoggedIn") private var isLogged: Bool = false
     @AppStorage("loggedUsername") private var loggedUsername: String = ""
@@ -188,7 +181,8 @@ struct SignupView: View {
             return
         }
         
-        if userProfiles.contains(where: { $0.username.caseInsensitiveCompare(usernameTrim) == .orderedSame }) {
+        let existingUsers = UserStorage.loadUsers()
+        if existingUsers.contains(where: { $0.username.caseInsensitiveCompare(usernameTrim) == .orderedSame }) {
             alertMessage = "Questo username è già in uso."
             showAlert = true
             return
@@ -201,12 +195,10 @@ struct SignupView: View {
             username: usernameTrim,
             password: passTrim
         )
-        modelContext.insert(newUser)
-        try? modelContext.save()
+        UserStorage.addUser(newUser)
         
         loggedUsername = usernameTrim
         isLogged = true
-        dismiss()
     }
     
     var body: some View {
@@ -291,5 +283,4 @@ struct SignupView: View {
 
 #Preview {
     LoginView()
-        .modelContainer(for: UserProfile.self, inMemory: true)
 }

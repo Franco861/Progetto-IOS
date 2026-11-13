@@ -39,7 +39,7 @@ class CountryViewModel {
     var selectedRegion: String = "Tutti"
     var isLoading: Bool = false
     var selectedCountry: Country? = nil
-    var activeTab: Int = 0 // 0: Mappa, 1: Info, 2: Profilo
+    var activeTab: Int = 0
     
     var savedCountryIDs: Set<String> = ["ITA", "FRA", "JPN"]
 
@@ -104,10 +104,10 @@ class CountryViewModel {
 
         var all: [Country] = []
         var offset = 0
-        let limit = 100   // massimo consentito dal piano gratuito
+        let limit = 100
 
         do {
-            while offset < 1000 {   // limite di sicurezza
+            while offset < 1000 {
                 let page = try await fetchPage(limit: limit, offset: offset)
                 all += page.data.objects.map { $0.toCountry() }
                 if !page.data.meta.more || page.data.objects.isEmpty { break }
@@ -136,7 +136,6 @@ class CountryViewModel {
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
 
         guard http.statusCode == 200 else {
-            // Stampa il motivo dell'errore (401 = chiave mancante o sbagliata, 403 = account bloccato, ...)
             print("HTTP \(http.statusCode):", String(data: data, encoding: .utf8) ?? "")
             throw URLError(.badServerResponse)
         }
@@ -291,7 +290,6 @@ struct UnifiedMapView: View {
         let query = viewModel.mapSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty { return }
         
-        // 1. Cerca se corrisponde a un continente
         if let match = viewModel.regions.first(where: { $0.localizedCaseInsensitiveContains(query) }) {
             viewModel.selectedRegion = match
             moveToRegion(match)
@@ -299,7 +297,6 @@ struct UnifiedMapView: View {
             return
         }
         
-        // 2. Cerca se corrisponde a una nazione o capitale e reindirizza alla scheda Info
         if let countryMatch = viewModel.countries.first(where: {
             $0.name.common.localizedCaseInsensitiveContains(query) ||
             ($0.capital?.contains { $0.localizedCaseInsensitiveContains(query) } ?? false)
@@ -371,9 +368,7 @@ struct CountryInfoView: View {
             }
             .navigationTitle("Info Posti")
             .searchable(text: $vm.infoSearchText, prompt: "Cerca città o nazione...")
-            .onSubmit(of: .search) {
-                // Gestisce l'invio da tastiera sulla scheda Info
-            }
+            .onSubmit(of: .search) { }
         }
     }
 }
@@ -502,16 +497,16 @@ struct CountryDetailSheet: View {
     }
 }
 
+// 5. SCHERMATA PROFILO
 struct ProfileView: View {
     @Environment(CountryViewModel.self) private var viewModel
     @Environment(\.modelContext) private var modelContext
     @Query private var userProfiles: [UserProfile]
+    @AppStorage("isLoggedIn") private var isLogged: Bool = false
     
-    // Campi per il form di Login
     @State private var inputName: String = ""
     @State private var inputEmail: String = ""
     
-    // Recupera il primo profilo salvato nel DB
     private var currentUser: UserProfile? {
         userProfiles.first
     }
@@ -519,7 +514,6 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             if let user = currentUser {
-                // MARK: - VISTA UTENTE LOGGATO
                 List {
                     Section {
                         HStack(spacing: 16) {
@@ -589,7 +583,6 @@ struct ProfileView: View {
                 }
                 .navigationTitle("Profilo")
             } else {
-                // MARK: - VISTA LOGIN
                 VStack(spacing: 24) {
                     Spacer()
                     
@@ -634,6 +627,13 @@ struct ProfileView: View {
                     .disabled(!isFormValid)
                     .padding(.horizontal)
                     
+                    Button(role: .destructive) {
+                        isLogged = false
+                    } label: {
+                        Text("Torna al Login iniziale")
+                            .font(.footnote)
+                    }
+                    
                     Spacer()
                 }
                 .padding()
@@ -642,70 +642,74 @@ struct ProfileView: View {
         }
     }
     
-    // Controlla che i campi non siano vuoti
     private var isFormValid: Bool {
         !inputName.trimmingCharacters(in: .whitespaces).isEmpty &&
         !inputEmail.trimmingCharacters(in: .whitespaces).isEmpty
     }
     
-    // Salva l'utente nel Database SwiftData
     private func login() {
         let newUser = UserProfile(
             name: inputName.trimmingCharacters(in: .whitespaces),
             email: inputEmail.trimmingCharacters(in: .whitespaces)
         )
         modelContext.insert(newUser)
-        
-        // Pulisci i campi
         inputName = ""
         inputEmail = ""
     }
     
-    // Rimuove l'utente dal Database
     private func logout() {
         if let user = currentUser {
             modelContext.delete(user)
         }
+        isLogged = false
     }
 }
-// 6. CONTENT VIEW CON BARRA A 3 SCHEDE
+
+// 6. CONTENT VIEW UNIFICATA
 struct ContentView: View {
+    @AppStorage("isLoggedIn") private var isLogged: Bool = false
     @State private var viewModel = CountryViewModel()
 
     var body: some View {
         @Bindable var vm = viewModel
 
-        TabView(selection: $vm.activeTab) {
-            UnifiedMapView()
-                .tabItem {
-                    Label("Mappa", systemImage: "map.fill")
-                }
-                .tag(0)
+        if isLogged {
+            TabView(selection: $vm.activeTab) {
+                UnifiedMapView()
+                    .tabItem {
+                        Label("Mappa", systemImage: "map.fill")
+                    }
+                    .tag(0)
 
-            CountryInfoView()
-                .tabItem {
-                    Label("Info", systemImage: "info.circle.fill")
-                }
-                .tag(1)
-            ClassificheView()
-                .tabItem{
-                    Label("Classifiche", systemImage: "trophy.fill")
-                }
-                .tag(2)
+                CountryInfoView()
+                    .tabItem {
+                        Label("Info", systemImage: "info.circle.fill")
+                    }
+                    .tag(1)
+                
+                ClassificheView()
+                    .tabItem {
+                        Label("Classifiche", systemImage: "trophy.fill")
+                    }
+                    .tag(2)
 
-            ProfileView()
-                .tabItem {
-                    Label("Profilo", systemImage: "person.fill")
-                }
-                .tag(3)
-        }
-        .environment(viewModel)
-        .task {
-            await viewModel.fetchCountries()
+                ProfileView()
+                    .tabItem {
+                        Label("Profilo", systemImage: "person.fill")
+                    }
+                    .tag(3)
+            }
+            .environment(viewModel)
+            .task {
+                await viewModel.fetchCountries()
+            }
+        } else {
+            LoginView()
         }
     }
 }
 
 #Preview {
-    ContentView()
+    UserDefaults.standard.set(false, forKey: "isLoggedIn")
+    return ContentView()
 }

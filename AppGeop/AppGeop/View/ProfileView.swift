@@ -69,7 +69,7 @@ struct ProfileView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 3))
 
                             VStack(alignment: .leading) {
-                                Text(country.name.common)
+                                Text(country.localizedName)
                                     .font(.headline)
                                 Text("Capitale: \(country.capital?.first ?? "N/D")")
                                     .font(.caption)

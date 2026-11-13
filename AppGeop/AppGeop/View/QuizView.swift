@@ -12,7 +12,6 @@ struct GeoQuizView: View {
     @State private var quiz = QuizViewModel()
     @AppStorage("quizBest") private var best = 0
 
-    // Il risultato si mostra dopo l'ultima risposta, quando si preme "Vedi risultato"
     private var showResult: Bool {
         quiz.isRoundOver && quiz.selectedID == nil
     }
@@ -70,7 +69,6 @@ struct GeoQuizView: View {
         }
     }
 
-    // MARK: - Domanda
     private func questionView(_ question: QuizQuestion) -> some View {
         VStack(spacing: 16) {
             if quiz.mode == .capitale {
@@ -115,7 +113,6 @@ struct GeoQuizView: View {
         }
     }
 
-    // MARK: - Risultato
     private var resultView: some View {
         VStack(spacing: 12) {
             Text("Round concluso!")

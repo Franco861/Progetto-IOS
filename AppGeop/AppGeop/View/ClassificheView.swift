@@ -54,6 +54,9 @@ struct ClassificheView: View {
                 }
             }
             .navigationTitle("Classifiche")
+            .navigationDestination(for: Country.self){
+                country in CountryDetailFullView(country: country)
+            }
             .searchable(text: $vm.searchText, prompt: "Cerca paese o capitale...")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

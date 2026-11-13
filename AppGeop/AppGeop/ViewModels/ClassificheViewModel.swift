@@ -7,40 +7,6 @@
 
 import SwiftUI
 
-enum RankingCriterion: String, CaseIterable, Identifiable {
-    case population = "Popolazione"
-    case area = "Superficie"
-    case density = "Densità"
-
-    var id: String { rawValue }
-
-    var unit: String {
-        switch self {
-        case .population: return "ab."
-        case .area: return "km²"
-        case .density: return "ab./km²"
-        }
-    }
-
-    func format(_ value: Double) -> String {
-        switch self {
-        case .density:
-            return value.formatted(.number.precision(.fractionLength(0...1)))
-        default:
-            return Int(value).formatted()
-        }
-    }
-}
-
-struct RankedCountry: Identifiable {
-    let rank: Int
-    let country: Country
-    let value: Double
-    let fraction: Double   // 0...1, rispetto al valore massimo della classifica
-
-    var id: String { country.id }
-}
-
 @Observable
 @MainActor
 final class ClassificheViewModel {
@@ -52,18 +18,8 @@ final class ClassificheViewModel {
 
     let limits = [10, 25, 50, 0]
 
-    // L'API restituisce i continenti in inglese
-    private let regionNames: [String: String] = [
-        "Africa": "Africa",
-        "Americas": "Americhe",
-        "Asia": "Asia",
-        "Europe": "Europa",
-        "Oceania": "Oceania",
-        "Antarctic": "Antartide"
-    ]
-
     func regionLabel(_ region: String) -> String {
-        regionNames[region] ?? region
+        RegionNames.label(region)
     }
 
     func regions(from countries: [Country]) -> [String] {
@@ -73,13 +29,9 @@ final class ClassificheViewModel {
 
     private func value(of country: Country) -> Double? {
         switch criterion {
-        case .population:
-            return Double(country.population)
-        case .area:
-            return country.area
-        case .density:
-            guard let area = country.area, area > 0 else { return nil }
-            return Double(country.population) / area
+        case .population: return Double(country.population)
+        case .area: return country.area
+        case .density: return country.density
         }
     }
 

@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
     @AppStorage("isLoggedIn") private var isLogged: Bool = false
@@ -89,5 +88,4 @@ struct InfoRow: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: UserProfile.self, inMemory: true)
 }

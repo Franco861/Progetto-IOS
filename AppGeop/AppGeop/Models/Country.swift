@@ -38,4 +38,27 @@ struct Country: Codable, Identifiable, Hashable {
         guard let area, area > 0 else { return nil }
         return Double(population) / area
     }
+    
+    private static let italianLocale = Locale(identifier: "it_IT")
+
+        /// Nome del paese tradotto in italiano tramite il codice ISO alpha-2
+        var localizedName: String {
+            guard let cca2,
+                  let translated = Self.italianLocale.localizedString(forRegionCode: cca2)
+            else {
+                return name.common
+            }
+            return translated
+        }
+
+        /// Ricerca case-insensitive e senza accenti su nome IT, nome EN e capitale
+        func matches(query: String) -> Bool {
+            let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+            if localizedName.range(of: query, options: options) != nil { return true }
+            if name.common.range(of: query, options: options) != nil { return true }
+            if capital?.contains(where: { $0.range(of: query, options: options) != nil }) == true {
+                return true
+            }
+            return false
+        }
 }

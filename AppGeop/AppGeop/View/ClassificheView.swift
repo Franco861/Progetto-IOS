@@ -111,26 +111,18 @@ struct RankingRow: View {
                 .foregroundStyle(item.rank <= 3 ? .orange : .secondary)
                 .frame(width: 32, alignment: .trailing)
 
-            AsyncImage(url: URL(string: item.country.flags.png)) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color.gray.opacity(0.3)
-                }
-            }
-            .frame(width: 40, height: 27)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            FlagImage(urlString: item.country.flags.png)
+                            .frame(width: 40, height: 27)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.country.name.common)
-                    .font(.headline)
-                Text("\(criterion.format(item.value)) \(criterion.unit)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                ProgressView(value: item.fraction)
-                    .tint(.blue)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.country.localizedName) // <-- MODIFICATO
+                                .font(.headline)
+                            Text("\(criterion.format(item.value)) \(criterion.unit)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            ProgressView(value: item.fraction)
+                                .tint(.blue)
             }
         }
         .padding(.vertical, 4)

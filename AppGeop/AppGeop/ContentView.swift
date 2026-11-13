@@ -22,10 +22,10 @@ struct ContentView: View {
                     .tabItem { Label("Classifiche", systemImage: "trophy.fill") }
                     .tag(AppTab.classifiche)
 
-                // Quando il quiz è pronto, decommentate:
-                // GeoQuizView()
-                //     .tabItem { Label("Quiz", systemImage: "questionmark.circle.fill") }
-                //     .tag(AppTab.quiz)
+
+                GeoQuizView()
+                    .tabItem { Label("Quiz", systemImage: "questionmark.circle.fill") }
+                    .tag(AppTab.quiz)
 
                 ProfileView()
                     .tabItem { Label("Profilo", systemImage: "person.fill") }

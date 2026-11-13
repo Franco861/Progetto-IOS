@@ -21,7 +21,9 @@ enum CountryService {
             if !page.data.meta.more || page.data.objects.isEmpty { break }
             offset += limit
         }
-        return all.sorted { $0.name.common < $1.name.common }
+        return all.sorted {
+            $0.localizedName.localizedStandardCompare($1.localizedName) == .orderedAscending
+        }
     }
 
     private static func fetchPage(limit: Int, offset: Int) async throws -> CountriesResponse {

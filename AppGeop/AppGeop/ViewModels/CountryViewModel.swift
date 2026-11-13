@@ -81,11 +81,7 @@ class CountryViewModel {
         if query.isEmpty {
             return countries
         } else {
-            return countries.filter { country in
-                let matchName = country.name.common.localizedCaseInsensitiveContains(query)
-                let matchCapital = country.capital?.contains { $0.localizedCaseInsensitiveContains(query) } ?? false
-                return matchName || matchCapital
-            }
+            return countries.filter { $0.matches(query: query) }
         }
     }
 
@@ -122,7 +118,6 @@ class CountryViewModel {
         UserDefaults.standard.set(Array(savedCountryIDs), forKey: savedKey)
     }
 
-    // MARK: - Navigazione tra schede
     func openInfoForCountry(_ country: Country) {
         infoPath = [country]
         withAnimation(.easeInOut(duration: 0.3)) {

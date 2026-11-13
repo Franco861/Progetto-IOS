@@ -43,7 +43,7 @@ struct CountryInfoView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 4))
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(country.name.common)
+                            Text(country.localizedName)
                                 .font(.headline)
                             Text("Capitale: \(country.capital?.first ?? "N/D")")
                                 .font(.subheadline)
@@ -72,14 +72,13 @@ struct CountryDetailFullView: View {
     let country: Country
     @Environment(CountryViewModel.self) private var viewModel
 
-    // Paesi confinanti, ricavati dai codici a 3 lettere
+    
     private var neighbors: [Country] {
         country.borders.compactMap { code in
             viewModel.countries.first { $0.cca3 == code }
         }
     }
 
-    // Righe della tabella: quelle senza dato non vengono mostrate
     private var rows: [(icon: String, title: String, value: String)] {
         var r: [(icon: String, title: String, value: String)] = [
             ("building.2", "Capitale", country.capital?.joined(separator: ", ") ?? "N/D"),
@@ -117,7 +116,7 @@ struct CountryDetailFullView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .shadow(radius: 5)
 
-                Text(country.name.official)
+                Text(country.localizedName)
                     .font(.title2)
                     .bold()
                     .multilineTextAlignment(.center)
@@ -152,7 +151,7 @@ struct CountryDetailFullView: View {
             }
             .padding()
         }
-        .navigationTitle(country.name.common)
+        .navigationTitle(country.localizedName)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -170,7 +169,7 @@ struct CountryDetailFullView: View {
                     HStack {
                         ForEach(neighbors) { neighbor in
                             NavigationLink(value: neighbor) {
-                                Text(neighbor.name.common)
+                                Text(neighbor.localizedName)
                                     .font(.subheadline)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)

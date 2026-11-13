@@ -17,6 +17,10 @@ struct UnifiedMapView: View {
             span: MKCoordinateSpan(latitudeDelta: 120.0, longitudeDelta: 120.0)
         )
     )
+    // AGGIUNTO: servono per tracciare lo zoom attuale ed evitare tap involontari
+    @State private var currentRegion: MKCoordinateRegion?
+    @State private var lastCameraChange: Date = .distantPast
+
     @State private var showSheet = false
     @State private var isLocating = false
     @State private var statusMessage: String?
@@ -28,21 +32,40 @@ struct UnifiedMapView: View {
         ZStack(alignment: .top) {
             MapReader { proxy in
                 Map(position: $position) {
-                    // Un solo segnaposto: quello del paese selezionato
+                    // MODIFICATO: usa country.localizedName al posto di country.name.common
                     if let country = viewModel.mapSelectedCountry,
                        let coord = country.coordinate {
-                        Marker(country.name.common, coordinate: coord)
+                        Marker(country.localizedName, coordinate: coord)
                     }
                 }
                 .mapControls {
                     MapCompass()
                     MapPitchToggle()
                 }
-                .onTapGesture { point in
-                    guard let coord = proxy.convert(point, from: .local) else { return }
-                    isSearchFocused = false
-                    Task { await selectCountry(at: coord) }
+                // AGGIUNTO: registra ogni spostamento o zoom della mappa
+                .onMapCameraChange(frequency: .continuous) { context in
+                    currentRegion = context.region
+                    lastCameraChange = .now
                 }
+                // MODIFICATO: al posto di .onTapGesture, distingue doppio tap (zoom) e tap singolo (selezione)
+                .simultaneousGesture(
+                    SpatialTapGesture(count: 2)
+                        .onEnded { value in
+                            isSearchFocused = false
+                            if let coord = proxy.convert(value.location, from: .local) {
+                                zoom(by: 0.4, centeredAt: coord)
+                            }
+                        }
+                        .exclusively(
+                            before: SpatialTapGesture(count: 1)
+                                .onEnded { value in
+                                    guard Date().timeIntervalSince(lastCameraChange) > 0.25 else { return }
+                                    guard let coord = proxy.convert(value.location, from: .local) else { return }
+                                    isSearchFocused = false
+                                    Task { await selectCountry(at: coord) }
+                                }
+                        )
+                )
             }
             .ignoresSafeArea(edges: .top)
 
@@ -91,6 +114,31 @@ struct UnifiedMapView: View {
                 suggestions
             }
             .padding(.top, 10)
+
+            // AGGIUNTO: pulsanti rapidi + e - per zoomare in basso a destra
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    VStack(spacing: 0) {
+                        Button { zoom(by: 0.5) } label: {
+                            Image(systemName: "plus")
+                                .frame(width: 40, height: 40)
+                        }
+                        Divider().frame(width: 30)
+                        Button { zoom(by: 2.0) } label: {
+                            Image(systemName: "minus")
+                                .frame(width: 40, height: 40)
+                        }
+                    }
+                    .font(.headline)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 24)
+                }
+            }
 
             // Messaggio temporaneo (oceano, errore di rete...)
             if let statusMessage {
@@ -150,7 +198,8 @@ struct UnifiedMapView: View {
                         HStack {
                             Image(systemName: "building.2.fill").foregroundStyle(.orange)
                             VStack(alignment: .leading) {
-                                Text(country.name.common)
+                                // MODIFICATO: nome in italiano nei suggerimenti
+                                Text(country.localizedName)
                                     .font(.headline)
                                     .foregroundStyle(.primary)
                                 Text("Capitale: \(country.capital?.first ?? "N/D")")
@@ -174,7 +223,7 @@ struct UnifiedMapView: View {
 
     // MARK: - Tocco sulla mappa → paese (geocodifica inversa)
     private func selectCountry(at coord: CLLocationCoordinate2D) async {
-        guard !isLocating else { return }   // evita richieste in parallelo
+        guard !isLocating else { return }
         isLocating = true
         defer { isLocating = false }
 
@@ -219,11 +268,9 @@ struct UnifiedMapView: View {
         }
     }
 
+    // MODIFICATO: usa matches(query:) per cercare in italiano, inglese e capitale
     private func matchingCountries(_ query: String) -> [Country] {
-        viewModel.countries.filter {
-            $0.name.common.localizedCaseInsensitiveContains(query) ||
-            ($0.capital?.contains { $0.localizedCaseInsensitiveContains(query) } ?? false)
-        }
+        viewModel.countries.filter { $0.matches(query: query) }
     }
 
     private func handleMapSearch() {
@@ -249,7 +296,8 @@ struct UnifiedMapView: View {
     // Mostra un paese trovato con la ricerca: marker, zoom e sheet
     private func focusOn(_ country: Country) {
         isSearchFocused = false
-        viewModel.mapSearchText = country.name.common
+        // MODIFICATO: imposta il nome italiano nella barra di ricerca
+        viewModel.mapSearchText = country.localizedName
         viewModel.mapSelectedCountry = country
 
         if let coord = country.coordinate {
@@ -269,6 +317,19 @@ struct UnifiedMapView: View {
         guard let region = viewModel.regionCoordinates[regionName] else { return }
         withAnimation(.easeInOut(duration: 1.2)) {
             position = .region(region)
+        }
+    }
+
+    // AGGIUNTO: calcola il nuovo livello di zoom mantenendo i limiti min/max
+    private func zoom(by factor: Double, centeredAt center: CLLocationCoordinate2D? = nil) {
+        let base = currentRegion ?? viewModel.regionCoordinates["Tutti"]!
+        let newSpan = MKCoordinateSpan(
+            latitudeDelta: min(max(base.span.latitudeDelta * factor, 0.05), 140.0),
+            longitudeDelta: min(max(base.span.longitudeDelta * factor, 0.05), 140.0)
+        )
+        let targetCenter = center ?? base.center
+        withAnimation(.easeInOut(duration: 0.3)) {
+            position = .region(MKCoordinateRegion(center: targetCenter, span: newSpan))
         }
     }
 
@@ -294,7 +355,8 @@ struct CountryDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private var summary: String {
-        var text = country.name.common
+        // MODIFICATO: nome in italiano nella descrizione
+        var text = country.localizedName
         if let capital = country.capital?.first {
             text += " ha come capitale \(capital)"
         } else {
@@ -313,7 +375,8 @@ struct CountryDetailSheet: View {
                 .frame(height: 90)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            Text(country.name.official)
+            // MODIFICATO: nome in italiano come titolo della sheet
+            Text(country.localizedName)
                 .font(.title3)
                 .bold()
                 .multilineTextAlignment(.center)
@@ -347,7 +410,7 @@ struct CountryDetailSheet: View {
         }
         .padding()
         .presentationDetents([.height(380)])
-        .presentationBackgroundInteraction(.enabled)   // si può toccare un altro paese con la sheet aperta
+        .presentationBackgroundInteraction(.enabled)
     }
 }
 

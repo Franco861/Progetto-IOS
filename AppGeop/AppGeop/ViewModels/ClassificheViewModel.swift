@@ -47,7 +47,7 @@ final class ClassificheViewModel {
 
         let sorted = valid.sorted { ascending ? $0.value < $1.value : $0.value > $1.value }
 
-        // Posizione reale in classifica (calcolata prima di ricerca e limite)
+        
         let ranked = sorted.enumerated().map { index, item in
             (rank: index + 1, country: item.country, value: item.value)
         }
@@ -60,11 +60,8 @@ final class ClassificheViewModel {
             shown = limit == 0 ? ranked : Array(ranked.prefix(limit))
             reference = shown.map { $0.value }.max() ?? 1   // barra relativa ai paesi mostrati
         } else {
-            shown = ranked.filter { item in
-                item.country.name.common.localizedCaseInsensitiveContains(query) ||
-                (item.country.capital?.contains { $0.localizedCaseInsensitiveContains(query) } ?? false)
-            }
-            reference = ranked.map { $0.value }.max() ?? 1  // con la ricerca, relativa all'intera classifica
+            shown = ranked.filter { $0.country.matches(query: query) }
+            reference = ranked.map { $0.value }.max() ?? 1
         }
 
         return shown.map { item in

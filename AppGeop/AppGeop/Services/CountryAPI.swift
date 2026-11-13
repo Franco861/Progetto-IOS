@@ -32,15 +32,24 @@ struct CountryDTO: Decodable {
     let lat: Double?
     let lng: Double?
     let flagPNG: String?
+    let subregion: String?
+    let borders: [String]
+    let languages: [String]
+    let currencies: [Country.Currency]
 
     private enum CodingKeys: String, CodingKey {
-        case names, codes, capitals, region, population, area, coordinates, flag
+        case names, codes, capitals, region, subregion, population, area
+        case coordinates, flag, borders, languages, currencies
     }
     private struct Names: Decodable { let common: String; let official: String? }
     private struct Codes: Decodable { let alpha_2: String?; let alpha_3: String }
     private struct Area: Decodable { let kilometers: Double? }
     private struct Coordinates: Decodable { let lat: Double?; let lng: Double? }
     private struct Flag: Decodable { let url_png: String? }
+    
+    private struct Language: Decodable { let name: String? }
+    
+    private struct CurrencyDTO: Decodable { let name: String?; let symbol: String? }
 
     // Una capitale può arrivare come oggetto {name: ...} o come semplice stringa
     private struct Capital: Decodable {
@@ -80,6 +89,12 @@ struct CountryDTO: Decodable {
         lat = coords?.lat
         lng = coords?.lng
         flagPNG = (try? c.decode(Flag.self, forKey: .flag))?.url_png
+        subregion = try? c.decode(String.self, forKey: .subregion)
+        borders = (try? c.decode([String].self, forKey: .borders)) ?? []
+        languages = ((try? c.decode([Language].self, forKey: .languages)) ?? []).compactMap { $0.name }
+        currencies = ((try? c.decode([CurrencyDTO].self, forKey: .currencies)) ?? []).compactMap { dto in
+            dto.name.map { Country.Currency(name: $0, symbol: dto.symbol) }
+        }
     }
 
     // Traduzione verso il modello usato dall'app
@@ -94,13 +109,18 @@ struct CountryDTO: Decodable {
 
         return Country(
             cca3: alpha3,
+            cca2: alpha2,
             name: .init(common: commonName, official: officialName),
             capital: capitals.isEmpty ? nil : capitals,
             region: region,
+            subregion: subregion,
             population: population,
             flags: .init(png: flagURL),
             latlng: latlng,
-            area: areaKm
+            area: areaKm,
+            borders: borders,
+            languages: languages,
+            currencies: currencies
         )
     }
 }

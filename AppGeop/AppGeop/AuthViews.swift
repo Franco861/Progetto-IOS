@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import MapKit
 
 // MARK: - 1. SFONDO MAPPA ANIMATA
@@ -35,7 +36,10 @@ struct AnimatedMapBackground: View {
 struct LoginView: View {
     @State private var username: String = ""
     @State private var password: String = ""
+    
+    @Query private var userProfiles: [UserProfile]
     @AppStorage("isLoggedIn") private var isLogged: Bool = false
+    @AppStorage("loggedUsername") private var loggedUsername: String = ""
     
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -46,13 +50,23 @@ struct LoginView: View {
     @FocusState private var focusedField: Field?
     
     private func checkCred() {
-        let cleanUser = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let cleanPass = password.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanUser = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanPass = password.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        if cleanPass == "admin" && cleanUser == "admin" {
+        guard !cleanUser.isEmpty, !cleanPass.isEmpty else {
+            alertMessage = "Inserisci username e password"
+            showAlert = true
+            return
+        }
+        
+        if let matchedUser = userProfiles.first(where: {
+            $0.username.caseInsensitiveCompare(cleanUser) == .orderedSame &&
+            $0.password == cleanPass
+        }) {
+            loggedUsername = matchedUser.username
             isLogged = true
         } else {
-            alertMessage = "Credenziali errate"
+            alertMessage = "Account non trovato o password errata. Registrati prima di accedere."
             showAlert = true
         }
     }
@@ -137,39 +151,62 @@ struct LoginView: View {
 // MARK: - 3. SCHERMATA DI REGISTRAZIONE
 struct SignupView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query private var userProfiles: [UserProfile]
+    
     @AppStorage("isLoggedIn") private var isLogged: Bool = false
+    @AppStorage("loggedUsername") private var loggedUsername: String = ""
     
     @State private var nome: String = ""
     @State private var cognome: String = ""
+    @State private var username: String = ""
     @State private var email: String = ""
     @State private var password: String = ""
-    @State private var eta: Int = 18
     
     @State private var showAlert = false
     @State private var alertMessage = ""
     
     enum Field {
-        case nome, cognome, email, password
+        case nome, cognome, username, email, password
     }
     @FocusState private var focusedField: Field?
     
     private func validaERegistra() {
         let nomeTrim = nome.trimmingCharacters(in: .whitespacesAndNewlines)
         let cognomeTrim = cognome.trimmingCharacters(in: .whitespacesAndNewlines)
+        let usernameTrim = username.trimmingCharacters(in: .whitespacesAndNewlines)
         let emailTrim = email.trimmingCharacters(in: .whitespacesAndNewlines)
         let passTrim = password.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        if nomeTrim.count > 4 &&
-           cognomeTrim.count > 4 &&
-           emailTrim.count > 4 &&
-           passTrim.count > 4 &&
-           eta > 0 {
-            // Imposta l'utente come loggato: ContentView passerà in automatico all'app principale
-            isLogged = true
-        } else {
+        guard nomeTrim.count > 4,
+              cognomeTrim.count > 4,
+              usernameTrim.count > 4,
+              emailTrim.count > 4,
+              passTrim.count > 4 else {
             alertMessage = "Compila tutti i campi con almeno 5 caratteri."
             showAlert = true
+            return
         }
+        
+        if userProfiles.contains(where: { $0.username.caseInsensitiveCompare(usernameTrim) == .orderedSame }) {
+            alertMessage = "Questo username è già in uso."
+            showAlert = true
+            return
+        }
+        
+        let newUser = UserProfile(
+            nome: nomeTrim,
+            cognome: cognomeTrim,
+            email: emailTrim,
+            username: usernameTrim,
+            password: passTrim
+        )
+        modelContext.insert(newUser)
+        try? modelContext.save()
+        
+        loggedUsername = usernameTrim
+        isLogged = true
+        dismiss()
     }
     
     var body: some View {
@@ -190,6 +227,14 @@ struct SignupView: View {
                         .background(focusedField == .cognome ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
                         .cornerRadius(10)
                 }
+                
+                TextField("", text: $username, prompt: Text("Username").foregroundColor(.white.opacity(0.7)))
+                    .focused($focusedField, equals: .username)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .padding(12)
+                    .background(focusedField == .username ? Color.gray.opacity(0.6) : Color.gray.opacity(0.35))
+                    .cornerRadius(10)
                 
                 TextField("", text: $email, prompt: Text("Email").foregroundColor(.white.opacity(0.7)))
                     .focused($focusedField, equals: .email)
@@ -216,7 +261,6 @@ struct SignupView: View {
                 }
                 .padding(.top, 4)
                 
-                // TORNA AL LOGIN SENZA IMPILARE VISTE
                 Button {
                     dismiss()
                 } label: {
@@ -247,4 +291,5 @@ struct SignupView: View {
 
 #Preview {
     LoginView()
+        .modelContainer(for: UserProfile.self, inMemory: true)
 }

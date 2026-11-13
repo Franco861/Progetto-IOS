@@ -2,36 +2,41 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @AppStorage("isLoggedIn") private var isLogged: Bool = false
     @State private var viewModel = CountryViewModel()
 
     var body: some View {
         @Bindable var vm = viewModel
 
-        TabView(selection: $vm.activeTab) {
-            UnifiedMapView()
-                .tabItem { Label("Mappa", systemImage: "map.fill") }
-                .tag(AppTab.map)
+        if isLogged {
+            TabView(selection: $vm.activeTab) {
+                UnifiedMapView()
+                    .tabItem { Label("Mappa", systemImage: "map.fill") }
+                    .tag(AppTab.map)
 
-            CountryInfoView()
-                .tabItem { Label("Info", systemImage: "info.circle.fill") }
-                .tag(AppTab.info)
+                CountryInfoView()
+                    .tabItem { Label("Info", systemImage: "info.circle.fill") }
+                    .tag(AppTab.info)
 
-            ClassificheView()
-                .tabItem { Label("Classifiche", systemImage: "trophy.fill") }
-                .tag(AppTab.classifiche)
+                ClassificheView()
+                    .tabItem { Label("Classifiche", systemImage: "trophy.fill") }
+                    .tag(AppTab.classifiche)
 
-            // Quando il quiz è pronto, decommentate:
-            // GeoQuizView()
-            //     .tabItem { Label("Quiz", systemImage: "questionmark.circle.fill") }
-            //     .tag(AppTab.quiz)
+                // Quando il quiz è pronto, decommentate:
+                // GeoQuizView()
+                //     .tabItem { Label("Quiz", systemImage: "questionmark.circle.fill") }
+                //     .tag(AppTab.quiz)
 
-            ProfileView()
-                .tabItem { Label("Profilo", systemImage: "person.fill") }
-                .tag(AppTab.profile)
-        }
-        .environment(viewModel)
-        .task {
-            await viewModel.fetchCountries()
+                ProfileView()
+                    .tabItem { Label("Profilo", systemImage: "person.fill") }
+                    .tag(AppTab.profile)
+            }
+            .environment(viewModel)
+            .task {
+                await viewModel.fetchCountries()
+            }
+        } else {
+            LoginView()
         }
     }
 }

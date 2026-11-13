@@ -98,11 +98,13 @@ struct CountryDTO: Decodable {
     }
 
     // Traduzione verso il modello usato dall'app
-    func toCountry() -> Country {
-        // Se manca il PNG, uso la CDN gratuita delle bandiere
-        let flagURL = flagPNG
-            ?? alpha2.map { "https://flags.restcountries.com/v5/w320/\($0.lowercased()).png" }
-            ?? ""
+    func toCountry() -> Country? {
+        // Se nell'API manca il campo flag.url_png o è vuoto, scarta l'intero paese
+        guard let flagURL = flagPNG?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !flagURL.isEmpty,
+              URL(string: flagURL) != nil else {
+            return nil
+        }
 
         var latlng: [Double]? = nil
         if let lat, let lng { latlng = [lat, lng] }
